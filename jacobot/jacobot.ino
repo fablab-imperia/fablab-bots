@@ -1,5 +1,5 @@
-#include <NewPing.h>
-#include <AFMotor.h>
+#include "NewPing.h"
+#include "AFMotor.h"
 
 /* BEHAVIOURS*/
 #define ROOMBA 0
@@ -72,7 +72,7 @@ float ANGULAR_SPEED = (float)(((float)LINEAR_SPEED) / (CAR_RADIUS*2.8f));
  * BEHAVIOURS AND Behaviour specific parameters                   
  ***********************************************/
 #if BEHAVIOUR == ROOMBA 
-  #define ROOMBA_OBSTACLE_THRESHOLD_DISTANCE_CM 40
+  #define ROOMBA_OBSTACLE_THRESHOLD_DISTANCE_CM 20
 
   //--- STATES FOR ROOMBA
   #define STATE_WANDERING 1
