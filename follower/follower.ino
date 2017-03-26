@@ -1,7 +1,8 @@
 #include "LineDetector.h"
 #include "AFMotor.h"
 
-#define MOTOR_SPEED_TURNING 200 
+#define REFERENCE_SPEED 100 
+#define MAX_SPEED_RANGE 90
 
 /************************
   SCHEMA POSIZIONE MOTORI
@@ -28,8 +29,8 @@ LineDetector sensorbar;
 
 float error = 0.0f; //errore attuale nella posizione
 float lastError = 0.0f; //errore ottenuto al giro precedente 
-float kp = 0.5f;    //termine proporzionale all'errore
-float kd = 1.0f;    //termine proporzionale alla variazione dell'errore
+float kp = 2.0f;    //termine proporzionale all'errore
+float kd = 0.0f;    //termine proporzionale alla variazione dell'errore
 float PV = 0.0f;    //termine usato per calcolare quanta spinta dare ai motori in base all'errore
 
 unsigned int leftSide_motor_speed = 0;  //valore usato per impostare la velocità sul lato sinistro
@@ -44,6 +45,7 @@ void setup() {
 
 void loop() {
 
+    sensorbar.printRawSensors();
     //LEGGI POSIZIONE LINEA
     unsigned int line_position = sensorbar.readLinePosition();
 
@@ -51,7 +53,7 @@ void loop() {
     followLine(line_position);
     
     //ATTENDI 
-    delay(50);
+    //delay(5);
 
 }
 
@@ -67,10 +69,10 @@ void stop() {
 void turnLeft() {
 
  //Setta velocita default per rotazione
- motor1.setSpeed(MOTOR_SPEED_TURNING);
- motor4.setSpeed(MOTOR_SPEED_TURNING);
- motor2.setSpeed(MOTOR_SPEED_TURNING);
- motor3.setSpeed(MOTOR_SPEED_TURNING);
+ motor1.setSpeed(150);
+ motor4.setSpeed(150);
+ motor2.setSpeed(150);
+ motor3.setSpeed(150);
 
   //per girare a SX motori 2 e 3 avanti e 1 e 4 indietro
   motor1.run(BACKWARD);
@@ -82,10 +84,10 @@ void turnLeft() {
 
 void turnRight() {
  //Setta velocita default per rotazione
- motor1.setSpeed(MOTOR_SPEED_TURNING);
- motor4.setSpeed(MOTOR_SPEED_TURNING);
- motor2.setSpeed(MOTOR_SPEED_TURNING);
- motor3.setSpeed(MOTOR_SPEED_TURNING);
+ motor1.setSpeed(150);
+ motor4.setSpeed(150);
+ motor2.setSpeed(150);
+ motor3.setSpeed(150);
 
  //per girare a SX motori 2 e 3 indietro e 1 e 4 avanti
  motor1.run(FORWARD);
@@ -111,25 +113,42 @@ void setRightSideSpeed(unsigned int speed) {
 
 void followLine(unsigned int position) {
 
+  Serial.print("POSITION ");
+  Serial.println(position);
    switch(position) {
 
       //LINEA SULL'ESTREMO SX DELLA BARRA DI SENSORI => IL ROBOT DEVE GIRARE A SX DI BRUTTO
       case 0:
+        Serial.println("LINEA TUTTO A SINISTRA: GIRO A SINISTRA DI BRUTTO!");
         turnLeft();
       break;
 
       //LINEA ALL'ESTREMO DESTRO DELLA BARRA DI SENSORI => IL ROBOT DEVE GIRARE A DX DI BRUTTO
       case 7000:
-      break;
+
+        Serial.println("LINEA TUTTO A DESTRA: GIRO A DESTRA DI BRUTTO!");
         turnRight();
+      break;
       //CASO NORMALE: CONTROLLO PD PER MANTENERE IL MIO OBIETTIVO (LINEA AL CENTRO DELLA BARRA DI SENSORI)
       default:
+        Serial.println("PERCORSO NORMALE");
         //Calcolo quanto disto dalla posizione obiettivo (3500)
-        error = position - 3500;
+        error = (int) position - 3500;
+
+        
+        
+        Serial.print("ERRORE ");
+        Serial.println(error);
 
         //Formula per il controllo PD: calcolo un valore di correzione per i motori che dipende da quanto
         //ora (error) e anche da quanto ho sbagliato prima (error - lastError) 
         PV = kp * error + kd * (error - lastError);
+
+        PV = map(PV, -2500, 2500, -MAX_SPEED_RANGE, MAX_SPEED_RANGE);
+  
+        Serial.print("PV ");
+        Serial.println(PV);
+
 
         //metto da parte l'errore che ho avuto ora per il prossimo giro
         lastError = error;
@@ -139,19 +158,26 @@ void followLine(unsigned int position) {
         // 255, lo sommo a 200, cosi il valore che passo ai motori sta tra 145 e 255 
         
         //Limito PV verso alto
-        if (PV > 55)
+        if (PV > MAX_SPEED_RANGE)
         {
-          PV = 55;
+          PV = MAX_SPEED_RANGE;
         }
 
         //Limito PV verso basso
-        if (PV < -55)
+        if (PV < -MAX_SPEED_RANGE)
         {
-          PV = -55;
+          PV = -MAX_SPEED_RANGE;
         }
 
-        leftSide_motor_speed = 200 + PV;
-        rightSide_motor_speed = 200 - PV;
+        leftSide_motor_speed = REFERENCE_SPEED + PV;
+        rightSide_motor_speed = REFERENCE_SPEED - PV;
+
+        Serial.print("LEFT SIDE MOTOR SPEED ");
+        Serial.println(leftSide_motor_speed);
+
+
+        Serial.print("RIGHT SIDE MOTOR SPEED ");
+        Serial.println(rightSide_motor_speed);
 
         setLeftSideSpeed(leftSide_motor_speed);
         setRightSideSpeed(rightSide_motor_speed);

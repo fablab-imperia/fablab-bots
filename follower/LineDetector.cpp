@@ -79,7 +79,7 @@ unsigned int LineDetector::readLinePosition()
 	//	if (val < 60)
 			  
 		unsigned int val = sensor_values[i];
-		if (val < 95)
+		if (val < 100)
 			val = 1;
 		else 
 			val = 0;
