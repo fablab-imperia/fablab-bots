@@ -1,8 +1,8 @@
 #include "LineDetector.h"
 #include "AFMotor.h"
 
-#define REFERENCE_SPEED 100 
-#define MAX_SPEED_RANGE 90
+#define REFERENCE_SPEED 90 
+#define MAX_SPEED_RANGE 50
 
 /************************
   SCHEMA POSIZIONE MOTORI
@@ -29,13 +29,15 @@ LineDetector sensorbar;
 
 float error = 0.0f; //errore attuale nella posizione
 float lastError = 0.0f; //errore ottenuto al giro precedente 
-float kp = 2.0f;    //termine proporzionale all'errore
-float kd = 0.0f;    //termine proporzionale alla variazione dell'errore
+float kp = 3.0f;    //termine proporzionale all'errore
+float kd = 2.0f;    //termine proporzionale alla variazione dell'errore
 float PV = 0.0f;    //termine usato per calcolare quanta spinta dare ai motori in base all'errore
 
 unsigned int leftSide_motor_speed = 0;  //valore usato per impostare la velocità sul lato sinistro
 unsigned int rightSide_motor_speed = 0; //valore usato per impostare la velocità sul lato destro
 
+//buffer last position
+unsigned int lastPosition = 0;
 
 
 void setup() {
@@ -50,10 +52,11 @@ void loop() {
     unsigned int line_position = sensorbar.readLinePosition();
 
     //SEGUI LINEA
-    followLine(line_position);
+    followLine(line_position, lastPosition);
     
+    lastPosition = line_position;
     //ATTENDI 
-    //delay(5);
+    delay(20);
 
 }
 
@@ -69,10 +72,10 @@ void stop() {
 void turnLeft() {
 
  //Setta velocita default per rotazione
- motor1.setSpeed(150);
- motor4.setSpeed(150);
- motor2.setSpeed(150);
- motor3.setSpeed(150);
+ motor1.setSpeed(200);
+ motor4.setSpeed(200);
+ motor2.setSpeed(200);
+ motor3.setSpeed(200);
 
   //per girare a SX motori 2 e 3 avanti e 1 e 4 indietro
   motor1.run(BACKWARD);
@@ -82,12 +85,28 @@ void turnLeft() {
 
 }
 
+
+void moveBack() {
+ //Setta velocita default per rotazione
+ motor1.setSpeed(80);
+ motor4.setSpeed(80);
+ motor2.setSpeed(80);
+ motor3.setSpeed(80);
+
+ //per girare a SX motori 2 e 3 indietro e 1 e 4 avanti
+ motor1.run(BACKWARD);
+ motor4.run(BACKWARD);
+ motor2.run(BACKWARD);
+ motor3.run(BACKWARD);
+
+}
+
 void turnRight() {
  //Setta velocita default per rotazione
- motor1.setSpeed(150);
- motor4.setSpeed(150);
- motor2.setSpeed(150);
- motor3.setSpeed(150);
+ motor1.setSpeed(200);
+ motor4.setSpeed(200);
+ motor2.setSpeed(200);
+ motor3.setSpeed(200);
 
  //per girare a SX motori 2 e 3 indietro e 1 e 4 avanti
  motor1.run(FORWARD);
@@ -111,7 +130,48 @@ void setRightSideSpeed(unsigned int speed) {
    motor3.setSpeed(speed);
 }
 
-void followLine(unsigned int position) {
+void findLineMovingRight() 
+{
+  
+  stop();
+  unsigned int line =0;
+  do {
+     line = sensorbar.readLinePosition();
+     Serial.print("Valore linea in do while: ");
+     Serial.println(line);
+     turnRight();
+  } while (line > 7000);
+  Serial.println("Fuori Do While");
+  stop();
+}
+
+
+void findLineMovingLeft() 
+{
+  
+  stop();
+  unsigned int line =0;
+  do {
+     line = sensorbar.readLinePosition();
+     turnLeft();
+  } while (line < 2000);
+  stop();
+}
+
+void findLineMovingBack() 
+{
+  
+  stop();
+  unsigned int line =0;
+  do {
+     line = sensorbar.readLinePosition();
+     moveBack();
+  } while (line < 1000 || line > 8000);
+  stop();
+}
+
+
+void followLine(unsigned int position, unsigned int lastPosition) {
 
   Serial.print("POSITION ");
   Serial.println(position);
@@ -119,21 +179,36 @@ void followLine(unsigned int position) {
 
       //LINEA SULL'ESTREMO SX DELLA BARRA DI SENSORI => IL ROBOT DEVE GIRARE A SX DI BRUTTO
       case 0:
-        Serial.println("LINEA TUTTO A SINISTRA: GIRO A SINISTRA DI BRUTTO!");
-        turnLeft();
+
+        Serial.println("SONO NEL BIANCO");
+        Serial.print("LASTPOS: ");
+        Serial.println(lastPosition);
+
+        //SONO NEL BIANCO MA PRIMA AVEVO LINEA A SX: VADO A SX
+        if (lastPosition > 0 && lastPosition < 4500)
+           findLineMovingLeft();
+        if (lastPosition > 4500 )
+           findLineMovingRight();
+        else 
+           findLineMovingBack();   
+      break;
+
+      case 1000:
+        Serial.println("STO PER USCIRE DA SX: RUOTO A SX");
+        findLineMovingLeft();
       break;
 
       //LINEA ALL'ESTREMO DESTRO DELLA BARRA DI SENSORI => IL ROBOT DEVE GIRARE A DX DI BRUTTO
-      case 7000:
+      case 8000:
 
-        Serial.println("LINEA TUTTO A DESTRA: GIRO A DESTRA DI BRUTTO!");
-        turnRight();
+        Serial.println("STO PER USCIRE DA DX: RUOTO A DX");
+        findLineMovingRight();
       break;
       //CASO NORMALE: CONTROLLO PD PER MANTENERE IL MIO OBIETTIVO (LINEA AL CENTRO DELLA BARRA DI SENSORI)
       default:
         Serial.println("PERCORSO NORMALE");
         //Calcolo quanto disto dalla posizione obiettivo (3500)
-        error = (int) position - 3500;
+        error = (int) position - 4500;
 
         
         
@@ -144,7 +219,7 @@ void followLine(unsigned int position) {
         //ora (error) e anche da quanto ho sbagliato prima (error - lastError) 
         PV = kp * error + kd * (error - lastError);
 
-        PV = map(PV, -2500, 2500, -MAX_SPEED_RANGE, MAX_SPEED_RANGE);
+        PV = map(PV, -3500, 3500, -MAX_SPEED_RANGE, MAX_SPEED_RANGE);
   
         Serial.print("PV ");
         Serial.println(PV);

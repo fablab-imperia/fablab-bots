@@ -56,35 +56,17 @@ unsigned int LineDetector::readLinePosition()
     avg = 0;
     sum = 0;
 
-    for(i=0;i<8;i++) {
-        /*unsigned int value = sensor_values[i]/18;
-		
-		if (value<0) 
-			value=0;
-		if (value>10) 
-			value=10;
-		
-		unsigned int remapped = 10 -value;
-		
-		if (remapped < 5 && remapped > 2)
-			remapped = remapped -2;
-
-		Serial.print("remapped: ");
-		Serial.println(remapped);
-			avg += (long)(remapped) * (i*10);
-			sum += remapped;*/
-		
-//		unsigned int val = sensor_values[i];
-		
-	//	if (val < 60)
-			  
-		unsigned int val = sensor_values[i];
+    for(i=1;i<9;i++) {
+        
+		unsigned int val = sensor_values[i-1];
 		if (val < 100)
 			val = 1;
 		else 
 			val = 0;
 
 		avg += (long)(val) * (i*1000);
+        Serial.print("AVG: ");
+        Serial.println(avg);
 		sum += val;
 		 
     }
