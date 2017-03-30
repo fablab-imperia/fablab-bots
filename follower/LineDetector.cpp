@@ -65,8 +65,7 @@ unsigned int LineDetector::readLinePosition()
 			val = 0;
 
 		avg += (long)(val) * (i*1000);
-        Serial.print("AVG: ");
-        Serial.println(avg);
+
 		sum += val;
 		 
     }
