@@ -145,7 +145,7 @@ void roomba_style(){
   #define STATE_IDLE 1
   #define STATE_KEEP_DISTANCE 2 
 
-  //Global: how much to move
+  //Global: how much to move in cm
   int travelling_distance_cm = 0;
   
   void follow_me_but_keep_distance(unsigned int targetDistanceCm){
