@@ -1,16 +1,20 @@
 #include "NewPing.h"
 #include "AFMotor.h"
+#include <SoftwareSerial.h>
 
 /* BEHAVIOURS*/
 #define ROOMBA 0
 #define SQUARE 1
 #define FOLLOWER 2
+#define LISTEN 3
 
-/*CURRENT BEHAVIOUR*/
-#define BEHAVIOUR ROOMBA
-//#define BEHAVIOUR SQUARE
-//#define BEHAVIOUR FOLLOWER
 
+int rxPin = 2;
+int txPin = A0;
+
+SoftwareSerial bluetooth(rxPin, txPin);
+
+int last_behaviour = -1;
 
 
 /***********************************************
@@ -22,7 +26,7 @@
  *     Circa 10 cm raggio macchina*
  ***********************************************/
 #define MOTOR_TO_SPEED 4
-#define DESIRED_POWER_TO_MOTORS 120
+#define DESIRED_POWER_TO_MOTORS 180
 #define CAR_RADIUS 8.0f
 #define RIGHT_SIDE_SLOWNESS_COMPENSATION 1.18f 
 
@@ -71,7 +75,7 @@ float ANGULAR_SPEED = (float)(((float)LINEAR_SPEED) / (CAR_RADIUS*2.8f));
 /***********************************************
  * BEHAVIOURS AND Behaviour specific parameters                   
  ***********************************************/
-#if BEHAVIOUR == ROOMBA 
+
   #define ROOMBA_OBSTACLE_THRESHOLD_DISTANCE_CM 20
 
   //--- STATES FOR ROOMBA
@@ -135,9 +139,8 @@ void roomba_style(){
   }
 }
 
-#endif
 
-#if BEHAVIOUR == FOLLOWER 
+
   #define FOLLOWER_DISTANCE_CM 15
   #define FOLLOWER_ERROR_CM 2
 
@@ -200,11 +203,7 @@ void roomba_style(){
     }
 
  }
-  
-#endif
 
-
-#if BEHAVIOUR == SQUARE
 
 void make_a_square(unsigned int long sideInCm) {
   goForward(sideInCm);
@@ -224,7 +223,6 @@ void make_a_square(unsigned int long sideInCm) {
   rotateLeft(90);
   delay(5000);
 }
-#endif
 
 
 
@@ -462,7 +460,7 @@ unsigned int distanceToObstacle() {
 
 
 void setup() {
-
+   bluetooth.begin(9600);
    pinMode(DIN, OUTPUT);
    pinMode(CLK, OUTPUT);
     pinMode(LOAD, OUTPUT);
@@ -485,28 +483,82 @@ void setup() {
     show_smile_face();
 
     
-    #if BEHAVIOUR == ROOMBA
-    allForward();
-    jacobot_current_state = STATE_WANDERING;
-    #endif
+  //  allForward();
+  //  jacobot_current_state = STATE_WANDERING;
 
-    #if BEHAVIOUR == FOLLOWER
     jacobot_current_state = STATE_IDLE;
-    #endif
+
 
 }
 
 
 
-void loop() {
 
- #if BEHAVIOUR == ROOMBA
- roomba_style();
- #elif BEHAVIOUR == SQUARE
- make_a_square(100);
- #elif BEHAVIOUR == FOLLOWER
- follow_me_but_keep_distance(FOLLOWER_DISTANCE_CM);
- #endif
+
+
+void loop() {
+  
+  String message = "";
+
+  
+  while(bluetooth.available()){
+    message+=char(bluetooth.read());
+  }
+
+  message.trim();
+
+  if (message == "*avanti#") 
+  {
+      last_behaviour =  LISTEN;
+      allForward();
+      delay(2000);
+      allStop();
+  } 
+  else if (message == "*indietro#") 
+  {
+      last_behaviour =  LISTEN;
+     allBackward();  
+     delay(2000);
+     allStop();
+  } 
+  else if ( message == "*destra#" ) 
+  {
+      last_behaviour =  LISTEN;
+      rotateRight(90);
+  }
+  else if ( message == "*sinistra#" ) 
+  {
+      last_behaviour =  LISTEN;
+      rotateLeft(90);
+  }
+  else if ( message == "*stop#" ) 
+  {
+      last_behaviour =  LISTEN;
+      allStop();
+  }
+  else if ( message == "*rumba#" ) 
+  {
+      allForward();
+      jacobot_current_state = STATE_WANDERING;
+      last_behaviour =  ROOMBA;
+      roomba_style();
+  } 
+  else if ( message == "*segui#" ) 
+  {
+      jacobot_current_state = STATE_IDLE;
+      last_behaviour =  FOLLOWER;
+      follow_me_but_keep_distance(60);
+  } 
+  else 
+  {
+    if (last_behaviour == ROOMBA)
+      roomba_style();
+    else if (last_behaviour == FOLLOWER)
+      follow_me_but_keep_distance(60);
+    else if (last_behaviour== LISTEN)
+      allStop();
+  }
+
  delay(500);
  
 }
